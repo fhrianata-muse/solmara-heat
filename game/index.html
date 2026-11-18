@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMARA HEAT — a sun-soaked getaway-driver game</title>
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#87ceeb; font-family:'Segoe UI',Arial,sans-serif; }
+  #scene { position:fixed; inset:0; display:block; }
+  .hidden { display:none !important; }
+  #hud { position:fixed; inset:0; pointer-events:none; color:#fff; }
+  #minimapWrap { position:absolute; left:16px; bottom:16px; width:168px; height:168px; border-radius:50%;
+    border:3px solid rgba(255,255,255,.85); overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.45); background:#2e8b57; }
+  #minimap { width:168px; height:168px; }
+  #stats { position:absolute; right:18px; top:12px; text-align:right; text-shadow:0 2px 6px rgba(0,0,0,.6); }
+  #cash { font-size:30px; font-weight:800; color:#7dff8a; letter-spacing:.5px; }
+  #stars { font-size:26px; color:#ffd83d; letter-spacing:3px; min-height:32px; }
+  #stars .off { color:rgba(255,255,255,.28); }
+  #jobBanner { position:absolute; top:14px; left:50%; transform:translateX(-50%); max-width:62%;
+    background:rgba(10,24,40,.78); border-left:5px solid #ffb340; border-radius:8px; padding:9px 16px;
+    font-size:16px; font-weight:600; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  #jobBanner small { display:block; font-weight:400; font-size:13px; color:#ffd9a0; margin-top:2px; }
+  #toast { position:absolute; bottom:200px; left:50%; transform:translateX(-50%); font-size:19px; font-weight:700;
+    color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.75); }
+  #speed { position:absolute; right:22px; bottom:20px; font-size:26px; font-weight:800; text-shadow:0 2px 6px rgba(0,0,0,.6); }
+  #hint { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); font-size:13px; color:rgba(255,255,255,.92);
+    background:rgba(10,24,40,.55); padding:5px 12px; border-radius:20px; }
+  .menu { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(255,166,66,.88), rgba(255,94,98,.82) 55%, rgba(38,84,140,.88)); color:#fff; text-align:center; z-index:5; }
+  .menu h1 { font-size:64px; margin:0; letter-spacing:3px; text-shadow:0 4px 0 #c2432b, 0 8px 24px rgba(0,0,0,.4); font-style:italic; }
+  .menu h2 { font-weight:400; margin:6px 0 14px; font-size:20px; text-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .menu p { max-width:560px; font-size:15px; line-height:1.5; text-shadow:0 1px 4px rgba(0,0,0,.55); margin:4px 20px; }
+  .menu .controls { font-size:13.5px; background:rgba(0,0,0,.28); border-radius:10px; padding:10px 18px; margin-top:12px; line-height:1.7; }
+  .menu button { pointer-events:auto; margin-top:18px; font-size:20px; font-weight:800; letter-spacing:1px; cursor:pointer;
+    color:#7a2d12; background:#ffd83d; border:0; border-radius:30px; padding:13px 42px; box-shadow:0 6px 0 #c79a12, 0 10px 22px rgba(0,0,0,.35); }
+  .menu button:hover { background:#ffe36e; }
+  #status { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="Solmara Heat: 3D open-world getaway driving game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="jobBanner">Welcome to Solmara Bay<small>Find the glowing marker to start a job</small></div>
+  <div id="stats"><div id="stars"></div><div id="cash">$0</div></div>
+  <div id="minimapWrap"><canvas id="minimap" width="168" height="168"></canvas></div>
+  <div id="toast"></div>
+  <div id="speed"></div>
+  <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter/exit car &nbsp;·&nbsp; F fire &nbsp;·&nbsp; Shift sprint/boost &nbsp;·&nbsp; Esc pause</div>
+</div>
+
+<div id="startMenu" class="menu">
+  <h1>SOLMARA HEAT</h1>
+  <h2>Solmara Bay · one courier, seven jobs, every cop in town</h2>
+  <p>Mara Voss delivered parcels by day — until the Solmara courier guild framed her brother.
+     Now she drives for whoever pays cash: beach clubs, boatyards, rooftop brokers.
+     Finish all <b>7 jobs</b>, stack the money, and outrun the Solmara PD.</p>
+  <div class="controls">
+    WASD — walk / drive &nbsp;·&nbsp; E — enter / exit / steal car &nbsp;·&nbsp; Shift — sprint / boost<br>
+    Space — handbrake &nbsp;·&nbsp; F or Click — fire &nbsp;·&nbsp; Q — camera left &nbsp;·&nbsp; M — radio &nbsp;·&nbsp; Esc — pause
+  </div>
+  <button id="startBtn">▶ &nbsp;START ENGINE</button>
+  <p id="continueNote"></p>
+</div>
+
+<div id="pauseMenu" class="menu hidden">
+  <h1>PAUSED</h1>
+  <p id="pauseStats"></p>
+  <button id="resumeBtn">RESUME</button>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script src="./vendor/three.min.js"></script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
