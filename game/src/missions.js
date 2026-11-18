@@ -19,17 +19,43 @@ export const JOBS = [
     text: 'Last run: the ledger buyer waits at the marina. Shake the PD and finish the story.' },
 ];
 
+import { canvasTexture, mergeParts, partMaterial } from './materials.js';
+
+// Beam falloff: bright at the ground, gone at the top (alphaMap green channel).
+const BEAM_ALPHA = canvasTexture(4, 128, (ctx, w, h) => {
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#000000'); grad.addColorStop(0.75, '#5a5a5a'); grad.addColorStop(1, '#ffffff');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+}, 97);
+
 export class Missions {
   constructor(scene) {
     this.index = 0;            // next job to offer
     this.phase = 'offer';      // offer -> pickup -> deliver -> offer ... -> done
     this.timer = 0;
-    this.beacon = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 42, 14, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0xffd83d, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }));
+    this.beacon = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 42, 14, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffd83d, alphaMap: BEAM_ALPHA, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
     this.beacon.position.y = 21; scene.add(this.beacon);
+    this.beaconCore = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 42, 8, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xffe970, alphaMap: BEAM_ALPHA, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
+    this.beaconCore.position.y = 21; scene.add(this.beaconCore);
     this.ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.6, 24),
       new THREE.MeshBasicMaterial({ color: 0xffd83d, side: THREE.DoubleSide }));
     this.ring.rotation.x = -Math.PI / 2; this.ring.position.y = 0.15; scene.add(this.ring);
+    // The cargo itself: a strapped courier crate waiting at the marker, so
+    // the interactable is an authored object, not just a light beam.
+    this.prop = new THREE.Group();
+    const crate = new THREE.Mesh(mergeParts([
+      { geo: new THREE.BoxGeometry(0.95, 0.68, 0.95), color: 0x8a6642, y: 0.34 },
+      { geo: new THREE.BoxGeometry(1.05, 0.16, 1.05), color: 0xe2483d, y: 0.76 },
+      { geo: new THREE.BoxGeometry(1.0, 0.12, 0.2), color: 0x3a3e42, y: 0.36 },
+      { geo: new THREE.BoxGeometry(0.2, 0.12, 1.0), color: 0x3a3e42, y: 0.36 },
+    ]), partMaterial);
+    crate.castShadow = true; this.prop.add(crate);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.07, 1.0),
+      new THREE.MeshBasicMaterial({ color: 0xffd83d }));
+    band.position.y = 0.55; this.prop.add(band);
+    scene.add(this.prop);
     this.spin = 0;
   }
   get job() { return JOBS[this.index] || null; }
@@ -39,12 +65,16 @@ export class Missions {
   }
   /** Advance the story when the player reaches the marker. Returns an event string or null. */
   update(dt, playerPos, wanted) {
-    if (!this.job) { this.beacon.visible = this.ring.visible = false; return null; }
+    if (!this.job) { this.beacon.visible = this.ring.visible = this.beaconCore.visible = this.prop.visible = false; return null; }
     const [tx, tz] = this.target;
     this.beacon.position.x = tx; this.beacon.position.z = tz;
+    this.beaconCore.position.x = tx; this.beaconCore.position.z = tz;
     this.ring.position.x = tx; this.ring.position.z = tz;
+    this.prop.position.set(tx, Math.sin(this.spin * 2) * 0.05, tz);
+    this.prop.rotation.y = this.spin * 0.6;
     this.spin += dt; this.ring.rotation.z = this.spin * 1.4;
-    this.beacon.material.opacity = 0.32 + Math.sin(this.spin * 3) * 0.12;
+    this.ring.scale.setScalar(1 + Math.sin(this.spin * 3) * 0.07); // the ring breathes
+    this.beacon.material.opacity = 0.4 + Math.sin(this.spin * 3) * 0.1;
     if (this.phase === 'deliver') {
       this.timer -= dt;
       if (this.timer <= 0) { this.phase = 'offer'; return 'failed'; }

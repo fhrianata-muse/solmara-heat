@@ -2,23 +2,20 @@
 // building collision, and the chase camera that follows her or her car.
 
 import { collideBuildings, CITY_HALF, BEACH_Z } from './city.js';
+import { buildPerson } from './pedestrians.js';
+import { mergeParts, partMaterial } from './materials.js';
 
+// Mara on the shared authored rig (pedestrians.js): coral jacket + dark jeans
+// read at 30 m, and a long-hair back panel is her silhouette signature.
 function makeMara() {
-  const g = new THREE.Group();
-  const jacket = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.98, 0.42),
-    new THREE.MeshLambertMaterial({ color: 0xff5e3a }));
-  jacket.position.y = 1.18; g.add(jacket);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 7),
-    new THREE.MeshLambertMaterial({ color: 0xc68863 }));
-  head.position.y = 1.98; g.add(head);
-  const hair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.22, 0.6),
-    new THREE.MeshLambertMaterial({ color: 0x2b1a12 }));
-  hair.position.y = 2.18; g.add(hair);
-  const legMat = new THREE.MeshLambertMaterial({ color: 0x22384f });
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.74, 0.27), legMat);
-  legL.position.set(-0.19, 0.37, 0); g.add(legL);
-  const legR = legL.clone(); legR.position.x = 0.19; g.add(legR);
-  g.userData = { legL, legR };
+  const g = buildPerson({
+    shirt: 0xe2483d, pants: 0x22384f, skin: 0xc68863, hair: 0x2b1a12, hat: 0, bag: false,
+  });
+  const back = new THREE.Mesh(mergeParts([
+    { geo: new THREE.BoxGeometry(0.3, 0.52, 0.07), color: 0x2b1a12, y: 1.38, z: -0.17 },
+  ]), partMaterial);
+  g.add(back);
+  g.scale.setScalar(1.72 / 1.76); // the rig is 1.76 m; Mara is contracted at 1.72 m
   return g;
 }
 
@@ -28,6 +25,9 @@ export class Player {
     this.x = x; this.z = z; this.heading = 0; this.phase = 0;
     this.car = null;               // the Car she is driving, or null on foot
     this.camHeading = 0;
+    this.aiming = false;           // set by main while the fire input is held
+    this.trauma = 0;               // game-feel shake, decays on real time
+    this.shakeT = 0;
   }
   get pos() { return this.car ? { x: this.car.x, z: this.car.z } : { x: this.x, z: this.z }; }
   get speed() { return this.car ? this.car.speed : 0; }
@@ -60,11 +60,17 @@ export class Player {
       this.phase += dt * sp * 1.9;
     }
     const swing = moving ? Math.sin(this.phase) * 0.55 : 0;
-    this.mesh.userData.legL.rotation.x = swing;
-    this.mesh.userData.legR.rotation.x = -swing;
-    this.mesh.position.set(this.x, moving ? Math.abs(Math.sin(this.phase)) * 0.07 : 0, this.z);
+    const u = this.mesh.userData;
+    u.legL.rotation.x = swing;
+    u.legR.rotation.x = -swing;
+    if (this.aiming) u.setAim(true);
+    else { u.armL.rotation.x = -swing * 0.75; u.armR.rotation.x = swing * 0.75; }
+    this.mesh.position.set(this.x, moving ? Math.abs(Math.sin(this.phase)) * 0.06 : 0, this.z);
     this.mesh.rotation.y = this.heading;
   }
+  /** Impacts add trauma (hits add, they don't reset); shake reads trauma². */
+  addTrauma(amount) { this.trauma = Math.min(1, this.trauma + amount); }
+
   /** Chase camera: behind and above the player or car, smoothed. */
   updateCamera(camera, dt) {
     const target = this.car ? { x: this.car.x, z: this.car.z, h: this.car.heading } : { x: this.x, z: this.z, h: this.camHeading };
@@ -76,7 +82,25 @@ export class Player {
     camera.position.x += (cx - camera.position.x) * k;
     camera.position.y += (up - camera.position.y) * k;
     camera.position.z += (cz - camera.position.z) * k;
+    // Speed FOV kick (LOOK.md): +6 opening up as the car passes 24 m/s.
+    const baseFov = this.car ? 62 : 58;
+    const speedKick = this.car ? Math.max(0, Math.min(1, (Math.abs(this.car.speed) - 24) / 10)) * 6 : 0;
+    const fov = baseFov + speedKick;
+    if (Math.abs(camera.fov - fov) > 0.02) {
+      camera.fov += (fov - camera.fov) * Math.min(1, dt * 5);
+      camera.updateProjectionMatrix();
+    }
     camera.lookAt(target.x, 1.4, target.z);
+    // Trauma shake writes the camera offset only — never the simulation —
+    // and decays on real time so it always returns to rest.
+    if (this.trauma > 0) {
+      this.trauma = Math.max(0, this.trauma - dt * 1.5);
+      this.shakeT += dt * 34;
+      const s = this.trauma * this.trauma, t = this.shakeT;
+      camera.position.x += Math.sin(t * 1.7) * 0.34 * s;
+      camera.position.y += Math.sin(t * 2.3) * 0.24 * s;
+      camera.rotation.z += Math.sin(t * 1.1) * 0.02 * s;
+    }
   }
 }
 

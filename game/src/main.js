@@ -17,7 +17,13 @@ const seed = Number.isInteger(seedParam) ? seedParam : 7;
 
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+// LOOK.md render finish: ACES tone mapping, sRGB output, soft shadows.
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 function resize(world) {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -29,7 +35,8 @@ function resize(world) {
 function runShot(name) {
   document.getElementById('startMenu').classList.add('hidden');
   document.getElementById('pauseMenu').classList.add('hidden');
-  const world = stageShot(name, seed);
+  const world = stageShot(name, seed, renderer);
+  window.__world = world;
   resize(world);
   const hud = new Hud(); hud.show();
   const state = hudState(world);
@@ -40,7 +47,14 @@ function runShot(name) {
     hud.update(0, hudState(world));
     painted += 1;
     if (painted < 3) requestAnimationFrame(paint);
-    else window.__shotReady = true;
+    else {
+      // Renderer diagnostics for the scorecard's performance row.
+      window.__diagnostics = {
+        calls: renderer.info.render.calls,
+        triangles: renderer.info.render.triangles,
+      };
+      window.__shotReady = true;
+    }
   }
   requestAnimationFrame(paint);
 }
@@ -50,6 +64,8 @@ function hudState(world) {
   return {
     cash: world.cash, stars: world.wanted.stars,
     banner: world.missions.banner(),
+    jobFraction: world.missions.phase === 'deliver' && world.missions.job
+      ? world.missions.timer / world.missions.job.time : null,
     target: world.missions.target,
     player: p.pos, heading: p.car ? p.car.heading : p.camHeading,
     speed: p.speed, inCar: !!p.car,
@@ -59,7 +75,8 @@ function hudState(world) {
 
 /** ---- Live game ---- */
 function runGame() {
-  const world = createWorld(seed);
+  const world = createWorld(seed, renderer);
+  window.__world = world;
   const hud = new Hud();
   const audio = new GameAudio();
   const keys = {};
@@ -137,14 +154,20 @@ function runGame() {
         throttle: fwd, steer: strafe * 0.9,
         boost: !!(keys.ShiftLeft || keys.ShiftRight), brake: !!keys.Space,
       }, world.city.colliders, collideBuildings);
-      if (p.car.bumped) { p.car.bumped = false; world.wanted.crime(6); }
+      if (p.car.bumped) {
+        p.car.bumped = false; world.wanted.crime(6);
+        p.addTrauma(0.5); // game-feel large tier: the hit lands in the camera
+        world.effects.dust(p.car.x, 0.8, p.car.z);
+      }
     } else {
       p.walk(dt, {
         x: strafe, z: fwd, sprint: !!(keys.ShiftLeft || keys.ShiftRight),
         camLeft: !!keys.KeyQ, camRight: !!keys.KeyR,
       }, world.city.colliders);
     }
-    if ((keys.KeyF || mouseDown)) {
+    const firing = !!(keys.KeyF || mouseDown);
+    p.aiming = firing && !p.car;
+    if (firing) {
       const origin = p.pos;
       const h = p.car ? p.car.heading : p.heading;
       world.combat.fire({ x: origin.x, z: origin.z }, { x: Math.sin(h), z: Math.cos(h) },

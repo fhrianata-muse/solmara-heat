@@ -66,11 +66,12 @@ function stageChase(world) {
   world.player.enterCar(world.playerCar);
   simulate(world, 2.4, [-22, 190]);
   const c = world.playerCar;
-  stageCruisers(world, [[c.x - 4.5, c.z - 11, 0.1], [c.x + 4.2, c.z - 16, -0.08]]);
+  // Both cruisers sit between camera and hero, flanking the chase axis.
+  stageCruisers(world, [[c.x - 2.8, c.z - 7.5, 0.08], [c.x + 5.2, c.z - 14.5, -0.06]]);
   stageTraffic(world, [[-26.5, c.z + 22, Math.PI], [-18, c.z + 38, 0]]);
-  stageHeli(world, c.x - 17, 19, c.z + 28);
-  world.camera.position.set(c.x + 1.5, 4.6, c.z - 21);
-  world.camera.lookAt(c.x - 1, 1.8, c.z + 12);
+  stageHeli(world, c.x - 5, 15, c.z + 32); // over the street, inside the frame
+  world.camera.position.set(c.x + 1.2, 3.8, c.z - 13.5);
+  world.camera.lookAt(c.x - 0.5, 1.6, c.z + 8);
 }
 
 function stageFoot(world) {
@@ -98,7 +99,7 @@ function stageMission(world) {
   world.player.enterCar(world.playerCar);
   simulate(world, 2.0, [210, 22]);
   const c = world.playerCar;
-  stageCruisers(world, [[c.x - 15, c.z + 3.5, Math.PI / 2]]);
+  stageCruisers(world, [[c.x - 6, c.z - 3.2, Math.PI / 2]]); // on the camera axis, behind the hero
   stageTraffic(world, [[c.x + 24, 26.5, -Math.PI / 2]]);
   world.camera.position.set(c.x - 13.5, 4.8, c.z - 8.5);
   world.camera.lookAt(c.x + 9, 1.7, c.z + 1.5);
@@ -125,8 +126,8 @@ function stageCoast(world) {
 export const SHOT_SCENES = { chase: stageChase, foot: stageFoot, mission: stageMission, coast: stageCoast };
 
 /** Build + stage a scene; returns the world ready to render and read state from. */
-export function stageShot(name, seed) {
-  const world = createWorld(seed);
+export function stageShot(name, seed, renderer) {
+  const world = createWorld(seed, renderer);
   (SHOT_SCENES[name] || stageChase)(world);
   // Position the mission beacon/ring on the scene's target (a zero-length
   // update: it moves the marker but advances nothing).

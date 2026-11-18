@@ -3,11 +3,15 @@
 // pedestrians panic and the wanted level climbs.
 
 export class Combat {
-  constructor(scene) {
+  constructor(scene, effects = null) {
+    this.effects = effects;
     this.cooldown = 0;
     this.flash = new THREE.Mesh(new THREE.SphereGeometry(0.34, 8, 6),
       new THREE.MeshBasicMaterial({ color: 0xffe98a }));
     this.flash.visible = false; scene.add(this.flash);
+    // The muzzle flash throws real light on the street for a few frames.
+    this.flashLight = new THREE.PointLight(0xffc873, 0, 13, 2);
+    scene.add(this.flashLight);
     this.tracer = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 1),
       new THREE.MeshBasicMaterial({ color: 0xffd83d }));
     this.tracer.visible = false; scene.add(this.tracer);
@@ -26,6 +30,8 @@ export class Combat {
     if (audio) audio.shot();
     const muzzle = { x: origin.x + dir.x * 1.1, z: origin.z + dir.z * 1.1 };
     this.flash.position.set(muzzle.x, 1.35, muzzle.z); this.flash.visible = true;
+    this.flashLight.position.set(muzzle.x, 1.4, muzzle.z);
+    this.flashLight.intensity = 2.6;
     let bestT = 42, hit = null, hitKind = null;
     for (const p of pedestrians.people) {
       if (p.down) continue;
@@ -48,11 +54,12 @@ export class Combat {
     this.tracer.rotation.y = Math.atan2(dir.x, dir.z);
     if (hitKind === 'person') { hit.health -= 2; if (hit.health <= 0) { pedestrians.knockDown(hit); wanted.crime(22); } }
     if (hitKind === 'car') { hit.health -= 14; if (hit.kind === 'police') wanted.crime(15); }
+    if (hitKind && this.effects) this.effects.sparks(end.x, 1.15, end.z);
     return hitKind;
   }
   update(dt) {
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.flashTime -= dt;
-    if (this.flashTime <= 0) { this.flash.visible = false; this.tracer.visible = false; }
+    if (this.flashTime <= 0) { this.flash.visible = false; this.tracer.visible = false; this.flashLight.intensity = 0; }
   }
 }

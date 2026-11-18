@@ -5,35 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SOLMARA HEAT — a sun-soaked getaway-driver game</title>
 <style>
-  html, body { margin:0; height:100%; overflow:hidden; background:#87ceeb; font-family:'Segoe UI',Arial,sans-serif; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#2e7cd6; font-family:'Segoe UI',Arial,sans-serif; }
   #scene { position:fixed; inset:0; display:block; }
   .hidden { display:none !important; }
   #hud { position:fixed; inset:0; pointer-events:none; color:#fff; }
+  #vignette { position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 62%, rgba(8,20,38,.30) 100%); }
   #minimapWrap { position:absolute; left:16px; bottom:16px; width:168px; height:168px; border-radius:50%;
-    border:3px solid rgba(255,255,255,.85); overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,.45); background:#2e8b57; }
+    border:3px solid #f2e3c6; overflow:hidden; box-shadow:0 6px 22px rgba(8,20,38,.5), inset 0 0 0 2px rgba(34,64,107,.55); background:#7fae56; }
   #minimap { width:168px; height:168px; }
-  #stats { position:absolute; right:18px; top:12px; text-align:right; text-shadow:0 2px 6px rgba(0,0,0,.6); }
-  #cash { font-size:30px; font-weight:800; color:#7dff8a; letter-spacing:.5px; }
-  #stars { font-size:26px; color:#ffd83d; letter-spacing:3px; min-height:32px; }
-  #stars .off { color:rgba(255,255,255,.28); }
-  #jobBanner { position:absolute; top:14px; left:50%; transform:translateX(-50%); max-width:62%;
-    background:rgba(10,24,40,.78); border-left:5px solid #ffb340; border-radius:8px; padding:9px 16px;
-    font-size:16px; font-weight:600; text-align:center; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  #stats { position:absolute; right:18px; top:12px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  #stars { font-size:24px; color:#ffd83d; letter-spacing:3px; line-height:1; min-height:32px;
+    background:rgba(16,32,54,.72); border:1px solid rgba(242,227,198,.35); border-radius:20px; padding:5px 14px 7px; }
+  #stars .off { color:rgba(255,255,255,.25); }
+  #cash { font-size:27px; font-weight:800; color:#8dff9a; letter-spacing:.5px; line-height:1;
+    background:rgba(16,32,54,.72); border:1px solid rgba(242,227,198,.35); border-radius:20px; padding:7px 16px; }
+  #jobBanner { position:absolute; top:14px; left:50%; transform:translateX(-50%); max-width:62%; min-width:300px;
+    background:rgba(13,28,48,.85); border-top:4px solid #e2483d; border-radius:10px; padding:9px 18px 11px;
+    font-size:16px; font-weight:700; text-align:center; box-shadow:0 6px 18px rgba(8,20,38,.45); }
   #jobBanner small { display:block; font-weight:400; font-size:13px; color:#ffd9a0; margin-top:2px; }
-  #toast { position:absolute; bottom:200px; left:50%; transform:translateX(-50%); font-size:19px; font-weight:700;
-    color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.75); }
-  #speed { position:absolute; right:22px; bottom:20px; font-size:26px; font-weight:800; text-shadow:0 2px 6px rgba(0,0,0,.6); }
-  #hint { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); font-size:13px; color:rgba(255,255,255,.92);
-    background:rgba(10,24,40,.55); padding:5px 12px; border-radius:20px; }
+  #jobBarWrap { height:5px; background:rgba(255,255,255,.16); border-radius:3px; margin-top:8px; overflow:hidden; }
+  #jobBar { height:100%; width:100%; background:linear-gradient(90deg,#e8b54a,#ffd83d); border-radius:3px; transition:width .3s linear; }
+  #toast { position:absolute; bottom:208px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:700;
+    color:#fff; background:rgba(13,28,48,.82); border:1px solid rgba(242,227,198,.4); border-radius:24px;
+    padding:9px 22px; opacity:0; transition:opacity .3s ease; white-space:nowrap; box-shadow:0 6px 18px rgba(8,20,38,.4); }
+  #speed { position:absolute; right:22px; bottom:20px; text-align:right; text-shadow:0 2px 8px rgba(8,20,38,.65); }
+  #speedNum { font-size:40px; font-weight:800; line-height:1; }
+  #speed small { display:block; font-size:12px; font-weight:600; letter-spacing:2px; color:#ffd9a0; margin-top:2px; }
+  #hint { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); font-size:13px; color:rgba(255,255,255,.94);
+    background:rgba(13,28,48,.6); border-bottom:3px solid #3fa7a0; padding:6px 14px; border-radius:20px; white-space:nowrap; }
   .menu { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:linear-gradient(180deg, rgba(255,166,66,.88), rgba(255,94,98,.82) 55%, rgba(38,84,140,.88)); color:#fff; text-align:center; z-index:5; }
-  .menu h1 { font-size:64px; margin:0; letter-spacing:3px; text-shadow:0 4px 0 #c2432b, 0 8px 24px rgba(0,0,0,.4); font-style:italic; }
-  .menu h2 { font-weight:400; margin:6px 0 14px; font-size:20px; text-shadow:0 2px 6px rgba(0,0,0,.5); }
-  .menu p { max-width:560px; font-size:15px; line-height:1.5; text-shadow:0 1px 4px rgba(0,0,0,.55); margin:4px 20px; }
-  .menu .controls { font-size:13.5px; background:rgba(0,0,0,.28); border-radius:10px; padding:10px 18px; margin-top:12px; line-height:1.7; }
-  .menu button { pointer-events:auto; margin-top:18px; font-size:20px; font-weight:800; letter-spacing:1px; cursor:pointer;
-    color:#7a2d12; background:#ffd83d; border:0; border-radius:30px; padding:13px 42px; box-shadow:0 6px 0 #c79a12, 0 10px 22px rgba(0,0,0,.35); }
-  .menu button:hover { background:#ffe36e; }
+    background:linear-gradient(180deg, #2e7cd6 0%, #f08a6b 58%, #e8b54a 100%); color:#fff; text-align:center; z-index:5; }
+  .menu h1 { font-size:66px; margin:0; letter-spacing:3px; font-style:italic; color:#fff;
+    text-shadow:0 3px 0 #22406b, 0 6px 0 #e2483d, 0 12px 28px rgba(8,20,38,.5); }
+  .menu h2 { font-weight:600; margin:10px 0 14px; font-size:20px; text-shadow:0 2px 6px rgba(8,20,38,.55); }
+  .menu p { max-width:560px; font-size:15px; line-height:1.55; margin:4px 20px;
+    background:rgba(13,28,48,.55); border-radius:12px; padding:12px 20px; }
+  .menu .controls { font-size:13.5px; background:rgba(13,28,48,.55); border-radius:12px; padding:10px 18px; margin-top:12px; line-height:1.7; }
+  .menu button { pointer-events:auto; margin-top:20px; font-size:20px; font-weight:800; letter-spacing:1px; cursor:pointer;
+    color:#fff; background:#e2483d; border:0; border-radius:30px; padding:13px 42px;
+    box-shadow:0 6px 0 #a02c22, 0 10px 22px rgba(8,20,38,.4); transition:transform .15s ease, background .15s ease; }
+  .menu button:hover { background:#f0564a; transform:translateY(-2px); }
   #status { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 </style>
 </head>
@@ -41,11 +52,12 @@
 <canvas id="scene" aria-label="Solmara Heat: 3D open-world getaway driving game"></canvas>
 
 <div id="hud" class="hidden">
-  <div id="jobBanner">Welcome to Solmara Bay<small>Find the glowing marker to start a job</small></div>
+  <div id="vignette"></div>
+  <div id="jobBanner"><div id="jobBarWrap"><div id="jobBar"></div></div></div>
   <div id="stats"><div id="stars"></div><div id="cash">$0</div></div>
   <div id="minimapWrap"><canvas id="minimap" width="168" height="168"></canvas></div>
   <div id="toast"></div>
-  <div id="speed"></div>
+  <div id="speed"><span id="speedNum"></span><small>KM/H</small></div>
   <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter/exit car &nbsp;·&nbsp; F fire &nbsp;·&nbsp; Shift sprint/boost &nbsp;·&nbsp; Esc pause</div>
 </div>
 

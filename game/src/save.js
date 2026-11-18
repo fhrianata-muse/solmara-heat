@@ -1,5 +1,6 @@
 // save.js — localStorage save for Solmara Heat: cash, jobs finished, wanted
 // stars and where Mara was standing, so a returning player continues the story.
+// Save format unchanged by rebuild v2, so v1 saves keep loading.
 
 const SAVE_KEY = 'solmara-heat-save-v1';
 

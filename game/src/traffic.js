@@ -21,7 +21,8 @@ export class Traffic {
         vertical ? lane + offset : along,
         vertical ? along : lane - offset,
         vertical ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? Math.PI / 2 : -Math.PI / 2),
-        CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)]);
+        CAR_COLORS[Math.floor(rand() * CAR_COLORS.length)],
+        ['sedan', 'hatch', 'pickup'][i % 3]);
       car.trafficDir = dir; car.vertical = vertical; car.cruise = 9 + rand() * 6;
       car.speed = car.cruise;
       this.cars.push(car);

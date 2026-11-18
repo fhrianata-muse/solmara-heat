@@ -1,6 +1,8 @@
 // SOLMARA HEAT — a gta6-01 entry (Node 22, standard library only): the game is this
 // directory's game/ folder, a 3D open-world getaway-driver game in plain JS with Three.js
-// vendored under game/vendor/ (no network request at runtime). Mara Voss runs 7 courier
+// vendored under game/vendor/ (no network request at runtime). Rebuild v2 redid the
+// visuals under the repo's LOOK.md/CHARACTERS.md/BAR.md contract (see SCORECARD.md).
+// Mara Voss runs 7 courier
 // jobs across the sun-soaked coastal city of Solmara Bay: on foot and in stolen cars, with
 // AI traffic, pedestrians, a 1–5 star wanted system, police cruisers and a helicopter.
 // This program copies game/ and screenshots/ from beside this file to /output and writes

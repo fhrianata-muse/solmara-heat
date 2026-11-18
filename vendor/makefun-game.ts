@@ -1201,3 +1201,5 @@ export function buildDossier(dir: string, caps: DossierCaps): Uint8Array {
   if (bytes.length > DOSSIER_MAX_BYTES) throw new DossierError(`buildDossier: the dossier is ${bytes.length} bytes, over the ${DOSSIER_MAX_BYTES} one holds`);
   return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length);
 }
+
+// Rebuild v2: vendored make.fun dossier library, content unchanged.

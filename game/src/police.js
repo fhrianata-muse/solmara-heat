@@ -3,6 +3,8 @@
 
 import { Car } from './vehicles.js';
 import { collideBuildings } from './city.js';
+import { buildPerson } from './pedestrians.js';
+import { glassMaterial, paintMaterial } from './materials.js';
 
 export class Wanted {
   constructor() { this.stars = 0; this.heat = 0; this.cooldown = 0; }
@@ -22,20 +24,53 @@ export class Wanted {
 
 function makeHelicopter() {
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x2456a6 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.7, 4.6), bodyMat); g.add(body);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 4.6), bodyMat);
-  tail.position.set(0, 0.25, -4.2); g.add(tail);
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1, 1.4),
-    new THREE.MeshLambertMaterial({ color: 0x9fd8ef, emissive: 0x2a5a74 }));
-  glass.position.set(0, 0.15, 1.9); g.add(glass);
-  const rotor = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.08, 0.5),
-    new THREE.MeshLambertMaterial({ color: 0x222222 }));
-  rotor.position.y = 1.15; g.add(rotor);
+  const navy = paintMaterial(0x22406b);
+  // Cabin: an extruded teardrop side profile, not a box.
+  const shape = new THREE.Shape();
+  shape.moveTo(-2.3, -0.5); shape.lineTo(-2.3, 0.55);
+  shape.quadraticCurveTo(-1.0, 0.9, 1.0, 0.82);
+  shape.quadraticCurveTo(2.2, 0.6, 2.35, 0.1);
+  shape.quadraticCurveTo(2.4, -0.4, 1.6, -0.55);
+  shape.lineTo(-2.3, -0.5);
+  const cabinGeo = new THREE.ExtrudeGeometry(shape, { depth: 1.7, bevelEnabled: true, bevelThickness: 0.14, bevelSize: 0.12, bevelSegments: 1 });
+  cabinGeo.translate(0, 0, -0.85); cabinGeo.rotateY(-Math.PI / 2);
+  const cabin = new THREE.Mesh(cabinGeo, navy); cabin.castShadow = true; g.add(cabin);
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 8), glassMaterial);
+  glass.scale.set(0.92, 0.72, 1.05); glass.position.set(0, 0.22, 1.55); g.add(glass);
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, 4.4, 8), navy);
+  boom.rotation.x = Math.PI / 2 - 0.06; boom.position.set(0, 0.42, -4.2); g.add(boom);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.09, 1.15, 0.62), navy);
+  fin.position.set(0, 0.85, -6.3); g.add(fin);
+  const tailRotor = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.15, 0.16),
+    new THREE.MeshStandardMaterial({ color: 0x222528, roughness: 0.6 }));
+  tailRotor.position.set(0.14, 0.85, -6.3); g.add(tailRotor);
+  const skidMat = new THREE.MeshStandardMaterial({ color: 0x2c2f33, roughness: 0.5, metalness: 0.6 });
+  for (const sx of [1, -1]) {
+    const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.6, 6), skidMat);
+    skid.rotation.x = Math.PI / 2; skid.position.set(sx * 0.9, -1.05, 0.2); g.add(skid);
+    const strut = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.55, 0.07), skidMat);
+    strut.position.set(sx * 0.9, -0.75, 0.9); g.add(strut);
+    const strut2 = strut.clone(); strut2.position.z = -0.6; g.add(strut2);
+  }
+  const rotor = new THREE.Group();
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.06, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x222528, roughness: 0.6 }));
+  rotor.add(blade);
+  const blade2 = blade.clone(); blade2.rotation.y = Math.PI / 2; rotor.add(blade2);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.3, 8), skidMat);
+  rotor.add(hub); rotor.position.y = 1.12; g.add(rotor);
   const cone = new THREE.Mesh(new THREE.ConeGeometry(5.5, 22, 12, 1, true),
     new THREE.MeshBasicMaterial({ color: 0xfff6b8, transparent: true, opacity: 0.16, depthWrite: false }));
   cone.position.y = -11.6; g.add(cone);
   g.userData.rotor = rotor;
+  g.userData.tailRotor = tailRotor;
+  return g;
+}
+
+/** A uniformed officer: navy rig + cap brim silhouette (CHARACTERS.md). */
+function makeOfficer() {
+  const g = buildPerson({ shirt: 0x22406b, pants: 0x1b2a44, skin: 0xc68863, hair: 0x111111, hat: 1, bag: false });
+  g.visible = false;
   return g;
 }
 
@@ -46,6 +81,11 @@ export class Police {
     this.heli = makeHelicopter();
     this.heli.visible = false; scene.add(this.heli);
     this.heliAngle = 0; this.spawnTimer = 0;
+    this.officers = [makeOfficer(), makeOfficer()];
+    for (const o of this.officers) scene.add(o);
+    // The searchlight is a real spotlight, not just a cone mesh.
+    this.spot = new THREE.SpotLight(0xfff2c0, 0, 95, 0.42, 0.55, 1);
+    scene.add(this.spot); scene.add(this.spot.target);
   }
   cruisersWanted(stars) { return [0, 1, 2, 3, 4, 5][stars] || 0; }
   update(dt, stars, target, colliders) {
@@ -86,6 +126,19 @@ export class Police {
       this.heli.position.set(hx, 23, hz);
       this.heli.rotation.y = -this.heliAngle;
       this.heli.userData.rotor.rotation.y += dt * 28;
-    }
+      this.heli.userData.tailRotor.rotation.x += dt * 34;
+      this.spot.intensity = 1.7;
+      this.spot.position.copy(this.heli.position);
+      this.spot.target.position.set(target.x, 0, target.z);
+      this.spot.target.updateMatrixWorld();
+    } else this.spot.intensity = 0;
+    // Officers step out beside the lead cruisers once the heat is real (3+).
+    this.officers.forEach((officer, i) => {
+      const cop = this.cruisers[i];
+      officer.visible = stars >= 3 && !!cop;
+      if (!officer.visible) return;
+      officer.position.set(cop.x + Math.cos(cop.heading) * 2.4, 0, cop.z - Math.sin(cop.heading) * 2.4);
+      officer.rotation.y = cop.heading + Math.PI / 2;
+    });
   }
 }

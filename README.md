@@ -6,6 +6,10 @@
 
 SOLMARA HEAT — an original 3D open-world crime game in the sun-soaked coastal city of Solmara Bay. Play as Mara Voss, a courier turned getaway driver: work 7 story jobs across the bay, steal and drive cars, dodge or outrun a 5-star police response with helicopter support, fight on foot, and bank your earnings. Traffic, pedestrians, a live minimap, synth radio and local saves — all running offline in a desktop browser from static files, built with Three.js.
 
+## Rebuild v2
+
+The first build played complete but looked like stacked boxes, so the visuals were rebuilt under the game-dev workflow (LOOK.md / CHARACTERS.md / BAR.md in this repo): extruded car profiles with bevels, an authored character rig, deco facades from seeded canvas textures, a PMREM sky-lighting preset with real shadows, event-driven effects (sparks, dust, skid marks, camera trauma), and a genre HUD with a mission timer bar. The before/after scorecard lives in SCORECARD.md. Gameplay is unchanged: same 7 jobs, traffic, wanted system and saves.
+
 ## Run it
 
 ```sh

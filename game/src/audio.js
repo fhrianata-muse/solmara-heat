@@ -1,6 +1,7 @@
 // audio.js — all sound is synthesised with WebAudio, no files: an engine hum
 // whose pitch follows speed, a two-tone police siren, a sunny radio loop
 // (a few detuned triangle notes), and one-shot effects for shots and pickups.
+// (Rebuild v2 left the synth untouched — the rebuild was visual only.)
 
 export class GameAudio {
   constructor() {
