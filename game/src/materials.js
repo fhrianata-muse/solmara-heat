@@ -1,18 +1,23 @@
-// materials.js — the one shared material library for Solmara Bay. Every mesh
-// in the game takes its surface from here: car paint, glass, rubber, chrome,
-// trim, foliage. One material-role set, reused — never per-object improvisation
-// (LOOK.md). Seeded canvas textures for the city surfaces live here too, so a
-// texture is generated once and shared by every mesh that wears it.
+// materials.js — Solmara Bay's one shared surface library.
+//
+// Every mesh in the game takes its material from here: car paint, cabin
+// glass, chrome, rubber, fabrics, and the seeded canvas textures the city
+// wears (asphalt, sidewalk, sand, sea, pier wood, painted signs, and THREE
+// deco facade rhythms). One material-role set, reused everywhere — a surface
+// invented inside a builder file is a bug, not a shortcut (LOOK.md).
+// Textures are painted by deterministic seeded brushes, so the city looks
+// identical on every load and in every screenshot.
 
-/** Deterministic RNG for texture painting: same seed, same pixels, every load. */
+/** Deterministic brush RNG: same seed, same pixels, every time. */
 export function texRandom(seed) {
   let s = (seed >>> 0) || 1;
-  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  return () => { s = (s * 22695477 + 1) >>> 0; return s / 4294967296; };
 }
 
-/** A canvas texture painted by `draw(ctx, w, h)`; colour maps are sRGB. */
+/** Paint a canvas texture with `draw(ctx, w, h, rand)`; colour maps are sRGB. */
 export function canvasTexture(w, h, draw, seed = 7) {
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h, texRandom(seed));
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
@@ -21,188 +26,283 @@ export function canvasTexture(w, h, draw, seed = 7) {
   return t;
 }
 
-/** Scale a geometry's UVs so a texture tiles once per `world` metres. */
+/** Scale a geometry's UVs so its texture tiles once per world size given. */
 export function tileUV(geo, su, sv) {
   const uv = geo.attributes.uv;
   if (uv) for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
   return geo;
 }
 
-const _m4 = new THREE.Matrix4();
-const _q = new THREE.Quaternion();
-const _e = new THREE.Euler();
+const _mat4 = new THREE.Matrix4();
+const _quat = new THREE.Quaternion();
+const _euler = new THREE.Euler();
+const _col = new THREE.Color();
 
 /**
  * Merge transformed, coloured parts into one BufferGeometry with vertex
- * colours — the kit-bash workhorse for trim, car detail and props, so a whole
- * family's small parts cost a single draw call. Each part: { geo, color,
- * x, y, z, rx, ry, rz, sx, sy, sz } (all but geo/color optional).
+ * colours — the kit-bash workhorse for trim, props and car detail, so a
+ * whole family of small parts costs a single draw call. Part shape:
+ * { geo, color, x, y, z, rx, ry, rz, sx, sy, sz } (only geo/color required).
  */
 export function mergeParts(parts) {
-  const pos = [], nor = [], uvA = [], col = [];
-  const c = new THREE.Color();
-  for (const p of parts) {
-    const g = p.geo.index ? p.geo.toNonIndexed() : p.geo;
-    _e.set(p.rx || 0, p.ry || 0, p.rz || 0);
-    _q.setFromEuler(_e);
-    _m4.compose(new THREE.Vector3(p.x || 0, p.y || 0, p.z || 0), _q,
-      new THREE.Vector3(p.sx || 1, p.sy || 1, p.sz || 1));
-    g.applyMatrix4(_m4);
-    c.set(p.color);
+  const positions = [], normals = [], uvs = [], colors = [];
+  for (const part of parts) {
+    const g = part.geo.index ? part.geo.toNonIndexed() : part.geo;
+    _euler.set(part.rx || 0, part.ry || 0, part.rz || 0);
+    _quat.setFromEuler(_euler);
+    _mat4.compose(
+      new THREE.Vector3(part.x || 0, part.y || 0, part.z || 0), _quat,
+      new THREE.Vector3(part.sx || 1, part.sy || 1, part.sz || 1));
+    g.applyMatrix4(_mat4);
+    _col.set(part.color);
     const pa = g.attributes.position, na = g.attributes.normal, ua = g.attributes.uv;
     for (let i = 0; i < pa.count; i++) {
-      pos.push(pa.getX(i), pa.getY(i), pa.getZ(i));
-      nor.push(na.getX(i), na.getY(i), na.getZ(i));
-      uvA.push(ua ? ua.getX(i) : 0, ua ? ua.getY(i) : 0);
-      col.push(c.r, c.g, c.b);
+      positions.push(pa.getX(i), pa.getY(i), pa.getZ(i));
+      normals.push(na.getX(i), na.getY(i), na.getZ(i));
+      uvs.push(ua ? ua.getX(i) : 0, ua ? ua.getY(i) : 0);
+      colors.push(_col.r, _col.g, _col.b);
     }
   }
   const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvA, 2));
-  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   return out;
 }
 
-/** One material for every vertex-coloured merged part (trim, detail, props). */
+/** The one material every vertex-coloured merged part wears. */
 export const partMaterial = new THREE.MeshStandardMaterial({
   vertexColors: true, roughness: 0.62, metalness: 0.08, side: THREE.DoubleSide,
 });
 
-function speckle(ctx, w, h, r, n, colors, aMax, sMax = 2) {
-  for (let i = 0; i < n; i++) {
-    ctx.fillStyle = colors[Math.floor(r() * colors.length)];
-    ctx.globalAlpha = 0.05 + r() * aMax;
-    ctx.fillRect(r() * w, r() * h, 1 + r() * sMax, 1 + r() * sMax);
+function grain(ctx, w, h, rand, count, tones, alphaCap, sizeCap = 2) {
+  for (let i = 0; i < count; i++) {
+    ctx.fillStyle = tones[Math.floor(rand() * tones.length)];
+    ctx.globalAlpha = 0.05 + rand() * alphaCap;
+    ctx.fillRect(rand() * w, rand() * h, 1 + rand() * sizeCap, 1 + rand() * sizeCap);
   }
   ctx.globalAlpha = 1;
 }
 
-/** Asphalt patch (one 12 m tile): dark base, aggregate speckle, wear bands. */
+/** Asphalt, one 12 m patch: dark base, aggregate grain, oil wear, patch seams. */
 export function asphaltTexture() {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    // Painted bright: an sRGB colour map decodes darker than the same hex
-    // used as a material colour, so the patch is lifted a tone to land on
-    // LOOK.md's asphalt #3C4147 in the render.
-    ctx.fillStyle = '#565d66'; ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, r, 2400, ['#454b53', '#646b74', '#767e88'], 0.16);
-    ctx.globalAlpha = 0.1; ctx.fillStyle = '#3a3f46';
-    for (let i = 0; i < 5; i++) ctx.fillRect(0, r() * h, w, 6 + r() * 16);
+    // Painted a tone bright on purpose: an sRGB colour map decodes darker
+    // than the same hex as a flat material colour, so the patch is lifted
+    // to land on LOOK.md's #3C4147 in the render.
+    ctx.fillStyle = '#596069';
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, r, 2600, ['#474d55', '#666e78', '#788089'], 0.16);
+    ctx.globalAlpha = 0.09;
+    ctx.fillStyle = '#33383f';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(r() * w, r() * h, 22 + r() * 40, 10 + r() * 18, r() * 3, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.16;
+    ctx.fillRect(0, r() * h, w, 2);
     ctx.globalAlpha = 1;
-  }, 11);
+  }, 101);
 }
 
-/** Sidewalk slabs (one 4 m tile = 2x2 slabs) with grout lines and speckle. */
+/** Sidewalk, one 4 m tile of 2×2 slabs: grout lines, grain, corner chips. */
 export function sidewalkTexture() {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    ctx.fillStyle = '#c9c2b4'; ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, r, 1500, ['#b7b09e', '#d8d2c2', '#a8a08c'], 0.14);
-    ctx.strokeStyle = 'rgba(90,84,70,0.55)'; ctx.lineWidth = 3;
-    ctx.strokeRect(0, 0, w, h); ctx.beginPath();
-    ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
-  }, 23);
+    ctx.fillStyle = '#cbc3b5';
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, r, 1500, ['#b8b19f', '#d9d3c3', '#a9a28d'], 0.14);
+    ctx.strokeStyle = 'rgba(88,82,68,0.55)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, w, h);
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
+    ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+    ctx.stroke();
+  }, 103);
 }
 
-/** Sand: warm base with shell-fleck speckle. */
+/** Sand: warm base flecked with shell tones. */
 export function sandTexture() {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    ctx.fillStyle = '#ead9a0'; ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, r, 1800, ['#dcc384', '#f6e7ba', '#cbb26e'], 0.2);
-  }, 37);
+    ctx.fillStyle = '#ecd9a1';
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, r, 1900, ['#ddc384', '#f7e8bb', '#ccb36f'], 0.2);
+  }, 107);
 }
 
-/** Sea surface: deep teal with sun sparkle streaks (scrolled slowly in play). */
+/** Sea surface: deep teal crossed by short sun-sparkle strokes. */
 export function waterTexture() {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    ctx.fillStyle = '#1f8aad'; ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 130; i++) {
-      ctx.strokeStyle = r() < 0.5 ? '#5fc3dd' : '#17708e';
-      ctx.globalAlpha = 0.12 + r() * 0.25; ctx.lineWidth = 1 + r() * 1.6;
+    ctx.fillStyle = '#1f8aad';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 140; i++) {
+      ctx.strokeStyle = r() < 0.5 ? '#63c6de' : '#166e8c';
+      ctx.globalAlpha = 0.12 + r() * 0.25;
+      ctx.lineWidth = 1 + r() * 1.6;
       const y = r() * h, x = r() * w, len = 8 + r() * 30;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y + (r() - 0.5) * 3); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y + (r() - 0.5) * 3);
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
-  }, 41);
+  }, 109);
+}
+
+/** One framed window: plaster reveal, gradient glass, diagonal sky shine. */
+function paintWindow(ctx, x, y, w, h) {
+  ctx.fillStyle = '#fffaf0';
+  ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+  grad.addColorStop(0, '#93c6da');
+  grad.addColorStop(0.45, '#33566b');
+  grad.addColorStop(1, '#264759');
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(255,250,240,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h);
+  ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(60,50,35,0.26)';
+  ctx.fillRect(x - 3, y + h + 5, w + 6, 5); // ledge shadow under the sill
 }
 
 /**
- * Deco facade (one tile = 4 windows x 3 floors): plaster bright enough to
- * take the building's tint, framed glass with a sky shine, a ledge shadow
- * under every window and a trim line per floor. Repeat per building size.
+ * Deco facades in THREE window rhythms, so the skyline never repeats one
+ * beat (city.js assigns a rhythm per building):
+ *   0 classic — 4×3 framed grid, a trim line per floor (tile 10.4×9.3 m)
+ *   1 slots   — 3×4 tall narrow windows between pilaster stripes (7.8×12.4 m)
+ *   2 ribbons — 5×2 wide windows over a continuous sill band (13.0×6.2 m)
+ * The plaster is painted bright; the building's own tint colours it.
  */
-export function facadeTexture() {
+export function facadeTexture(variant = 0) {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    ctx.fillStyle = '#e7dcc2'; ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, r, 700, ['#d8cbab', '#f4ecd8'], 0.1);
-    const cols = 4, rows = 3, cw = w / cols, ch = h / rows;
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const x = col * cw + 13, y = row * ch + 15, ww = cw - 26, wh = ch - 34;
-        ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 3, y - 3, ww + 6, wh + 6);
-        const grad = ctx.createLinearGradient(x, y, x + ww, y + wh);
-        grad.addColorStop(0, '#8fc3d9'); grad.addColorStop(0.45, '#33566b'); grad.addColorStop(1, '#274b5e');
-        ctx.fillStyle = grad; ctx.fillRect(x, y, ww, wh);
-        ctx.strokeStyle = 'rgba(255,250,240,0.75)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x + ww / 2, y); ctx.lineTo(x + ww / 2, y + wh);
-        ctx.moveTo(x, y + wh / 2); ctx.lineTo(x + ww, y + wh / 2); ctx.stroke();
-        ctx.fillStyle = 'rgba(60,50,35,0.28)'; ctx.fillRect(x - 3, y + wh + 5, ww + 6, 5); // ledge shadow
+    ctx.fillStyle = '#e9ddc3';
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, r, 700, ['#d9ccac', '#f5edd9'], 0.1);
+    if (variant === 1) {
+      const cols = 3, rows = 4, cw = w / cols, ch = h / rows;
+      for (let col = 0; col <= cols; col++) { // pilaster stripes
+        ctx.fillStyle = 'rgba(120,100,70,0.30)';
+        ctx.fillRect(col * cw - 3, 0, 6, h);
       }
-      ctx.fillStyle = 'rgba(120,100,70,0.35)'; ctx.fillRect(0, (row + 1) * ch - 2, w, 2); // floor trim line
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          paintWindow(ctx, col * cw + 19, row * ch + 10, cw - 38, ch - 22);
+        }
+      }
+    } else if (variant === 2) {
+      const cols = 5, rows = 2, cw = w / cols, ch = h / rows;
+      for (let row = 0; row < rows; row++) {
+        ctx.fillStyle = '#f08a6b'; // painted awning stripe above each ribbon
+        ctx.fillRect(0, row * ch + 6, w, 9);
+        ctx.fillStyle = 'rgba(120,100,70,0.4)'; // continuous sill band
+        ctx.fillRect(0, (row + 1) * ch - 12, w, 5);
+        for (let col = 0; col < cols; col++) {
+          paintWindow(ctx, col * cw + 5, row * ch + 24, cw - 10, ch - 44);
+        }
+      }
+    } else {
+      const cols = 4, rows = 3, cw = w / cols, ch = h / rows;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          paintWindow(ctx, col * cw + 13, row * ch + 15, cw - 26, ch - 34);
+        }
+        ctx.fillStyle = 'rgba(120,100,70,0.35)';
+        ctx.fillRect(0, (row + 1) * ch - 2, w, 2); // floor trim line
+      }
     }
-  }, 53);
+  }, 113 + variant * 6);
 }
 
-/** Pier planks: horizontal boards with gaps and grain. */
+/** Pier planks: boards with grain, gaps and the odd dark stain. */
 export function woodTexture() {
   return canvasTexture(256, 256, (ctx, w, h, r) => {
-    ctx.fillStyle = '#8a6642'; ctx.fillRect(0, 0, w, h);
-    speckle(ctx, w, h, r, 1200, ['#77572f', '#9c774e'], 0.18, 5);
+    ctx.fillStyle = '#8b6743';
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, r, 1200, ['#78582f', '#9d784f'], 0.18, 5);
     ctx.fillStyle = 'rgba(40,26,12,0.6)';
     for (let y = 0; y < h; y += 32) ctx.fillRect(0, y, w, 3);
-  }, 67);
+  }, 127);
 }
 
-/** Painted sign board: deco border + bold centred name. */
+/** Painted sign board: deco border, bold centred name. */
 export function signTexture(text, bg, fg) {
   return canvasTexture(512, 128, (ctx, w, h) => {
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = fg; ctx.lineWidth = 5; ctx.strokeRect(10, 10, w - 20, h - 20);
-    ctx.fillStyle = fg; ctx.font = '800 54px Arial, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = fg;
+    ctx.lineWidth = 5;
+    ctx.strokeRect(10, 10, w - 20, h - 20);
+    ctx.fillStyle = fg;
+    ctx.font = '800 54px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(text, w / 2, h / 2 + 2);
-  }, 71);
+  }, 131);
 }
 
-/** Vertical sky gradient (zenith -> horizon -> warm sea haze) for the dome. */
+/** Vertical sky gradient for the dome and the PMREM environment. */
 export function skyTexture() {
   const t = canvasTexture(32, 512, (ctx, w, h) => {
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, '#2e7cd6'); grad.addColorStop(0.55, '#7ec2e8');
-    grad.addColorStop(0.78, '#bfe3f2'); grad.addColorStop(1, '#f2e3c6');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
-  }, 83);
+    grad.addColorStop(0, '#2e7cd6');
+    grad.addColorStop(0.52, '#79c0e8');
+    grad.addColorStop(0.78, '#bfe3f2');
+    grad.addColorStop(1, '#f2e3c6');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }, 137);
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
 
-/** Car paint by colour, cached: glossy, env-reflecting, one program for all. */
-const paintCache = new Map();
-export function paintMaterial(color) {
-  if (!paintCache.has(color)) {
-    paintCache.set(color, new THREE.MeshStandardMaterial({
-      color, roughness: 0.32, metalness: 0.25, envMapIntensity: 0.9,
-    }));
-  }
-  return paintCache.get(color);
+/** Soft radial glow disc (white; tinted by the material that wears it). */
+export function glowDiscTexture() {
+  const t = canvasTexture(128, 128, (ctx, w, h) => {
+    const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 62);
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.4, 'rgba(255,255,255,0.42)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+  }, 139);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
 }
 
-/** Cabin glass: dark teal, near-mirror so the sky env does the talking. */
+/**
+ * Car paint, cached per colour + finish. opts can override the house finish
+ * ({ roughness, metalness, env }) — the hero coupe uses that to keep its
+ * deep red from washing pink under the sky environment (LOOK.md v3).
+ */
+const paintCache = new Map();
+export function paintMaterial(color, opts = {}) {
+  const finish = {
+    roughness: opts.roughness ?? 0.32,
+    metalness: opts.metalness ?? 0.25,
+    env: opts.env ?? 0.9,
+  };
+  const key = `${color}|${finish.roughness}|${finish.metalness}|${finish.env}`;
+  if (!paintCache.has(key)) {
+    paintCache.set(key, new THREE.MeshStandardMaterial({
+      color, roughness: finish.roughness, metalness: finish.metalness,
+      envMapIntensity: finish.env,
+    }));
+  }
+  return paintCache.get(key);
+}
+
+/** Cabin glass: dark teal, near-mirror, so the sky env does the talking. */
 export const glassMaterial = new THREE.MeshStandardMaterial({
   color: 0x1d3f52, roughness: 0.06, metalness: 0.4, envMapIntensity: 1.6,
 });
 
-/** Tyre + hub in one vertex-coloured geometry, so wheels share this too. */
+/** Wheels wear this: vertex-coloured tyre + hub in one geometry. */
 export const wheelMaterial = new THREE.MeshStandardMaterial({
   vertexColors: true, roughness: 0.85, metalness: 0.05,
 });
@@ -211,10 +311,10 @@ export const chromeMaterial = new THREE.MeshStandardMaterial({
   color: 0xd8dee2, roughness: 0.18, metalness: 0.9, envMapIntensity: 1.2,
 });
 
-/** Unlit merged lights (head/tail lamps): bright colours read as lamps. */
+/** Unlit merged lamps (head/tail lights): flat bright colour reads as lit. */
 export const lampGlowMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
 
-/** Skin tones and outfit fabrics are plain matte standards, cached by colour. */
+/** Skin tones and outfit fabrics: matte standards, cached by colour. */
 const fabricCache = new Map();
 export function fabricMaterial(color) {
   if (!fabricCache.has(color)) {

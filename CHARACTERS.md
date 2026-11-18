@@ -1,5 +1,12 @@
 # CHARACTERS — proportions in metres, identity by silhouette first
 
+## Rebuild v3 notes (this session)
+- The person rig is re-authored in pedestrians.js (buildPerson): same metre
+  contract — Mara 1.72 m, crowd 1.65–1.85 m — with the joint pivots, hair cap
+  and hat/bag silhouette options kept; Mara's long-hair back panel stays her
+  signature. The hero coupe's paint is the deepened red-coral of LOOK.md v3,
+  so at gameplay distance she is found by the RED car, not a pink one.
+
 ## Rebuild v2 phase notes (builder)
 - 1: v1 figures topped out at 2.19 m (overscale). The authored rig in pedestrians.js (buildPerson) now builds to the contract heights; Mara is 1.72 m with the long-hair back panel as her silhouette signature.
 - 2a: one rig serves pedestrians, Mara and police officers — hats/bags are options on the same builder, officers get navy + cap. Cars are extruded profiles per class (coupe 4.4 m … pickup 5.0 m) with a separate glasshouse extrusion.

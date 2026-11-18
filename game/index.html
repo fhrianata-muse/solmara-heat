@@ -13,26 +13,38 @@
   #minimapWrap { position:absolute; left:16px; bottom:16px; width:168px; height:168px; border-radius:50%;
     border:3px solid #f2e3c6; overflow:hidden; box-shadow:0 6px 22px rgba(8,20,38,.5), inset 0 0 0 2px rgba(34,64,107,.55); background:#7fae56; }
   #minimap { width:168px; height:168px; }
+  #compass { position:absolute; left:50%; top:5px; transform:translateX(-50%); font-size:11px; font-weight:800;
+    letter-spacing:1px; color:#22406b; background:#f2e3c6; border-radius:9px; padding:1px 7px; z-index:2; }
   #stats { position:absolute; right:18px; top:12px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
   #stars { font-size:24px; color:#ffd83d; letter-spacing:3px; line-height:1; min-height:32px;
     background:rgba(16,32,54,.72); border:1px solid rgba(242,227,198,.35); border-radius:20px; padding:5px 14px 7px; }
   #stars .off { color:rgba(255,255,255,.25); }
+  #stars.pulse { animation:starPulse .45s ease; }
+  @keyframes starPulse { 0% { transform:scale(1); } 35% { transform:scale(1.18); background:rgba(120,30,20,.8); } 100% { transform:scale(1); } }
   #cash { font-size:27px; font-weight:800; color:#8dff9a; letter-spacing:.5px; line-height:1;
     background:rgba(16,32,54,.72); border:1px solid rgba(242,227,198,.35); border-radius:20px; padding:7px 16px; }
+  #cash.bump { animation:cashBump .4s ease; }
+  @keyframes cashBump { 0% { transform:scale(1); } 40% { transform:scale(1.14); } 100% { transform:scale(1); } }
   #jobBanner { position:absolute; top:14px; left:50%; transform:translateX(-50%); max-width:62%; min-width:300px;
-    background:rgba(13,28,48,.85); border-top:4px solid #e2483d; border-radius:10px; padding:9px 18px 11px;
+    background:linear-gradient(180deg, rgba(19,38,64,.92), rgba(13,28,48,.85)); border-top:4px solid #e2483d; border-left:4px solid #ffd83d;
+    border-radius:10px; padding:9px 18px 11px;
     font-size:16px; font-weight:700; text-align:center; box-shadow:0 6px 18px rgba(8,20,38,.45); }
   #jobBanner small { display:block; font-weight:400; font-size:13px; color:#ffd9a0; margin-top:2px; }
   #jobBarWrap { height:5px; background:rgba(255,255,255,.16); border-radius:3px; margin-top:8px; overflow:hidden; }
   #jobBar { height:100%; width:100%; background:linear-gradient(90deg,#e8b54a,#ffd83d); border-radius:3px; transition:width .3s linear; }
   #toast { position:absolute; bottom:208px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:700;
-    color:#fff; background:rgba(13,28,48,.82); border:1px solid rgba(242,227,198,.4); border-radius:24px;
+    color:#fff; background:rgba(13,28,48,.85); border:1px solid rgba(242,227,198,.4); border-left:5px solid #e2483d; border-radius:14px;
     padding:9px 22px; opacity:0; transition:opacity .3s ease; white-space:nowrap; box-shadow:0 6px 18px rgba(8,20,38,.4); }
-  #speed { position:absolute; right:22px; bottom:20px; text-align:right; text-shadow:0 2px 8px rgba(8,20,38,.65); }
+  #speed { position:absolute; right:22px; bottom:20px; text-align:right; text-shadow:0 2px 8px rgba(8,20,38,.65); width:150px; }
   #speedNum { font-size:40px; font-weight:800; line-height:1; }
   #speed small { display:block; font-size:12px; font-weight:600; letter-spacing:2px; color:#ffd9a0; margin-top:2px; }
+  #speedBarWrap { height:5px; background:rgba(255,255,255,.22); border-radius:3px; margin-top:6px; overflow:hidden; box-shadow:0 1px 4px rgba(8,20,38,.4); }
+  #speedBar { height:100%; width:0%; background:linear-gradient(90deg,#3fa7a0,#ffd83d,#e2483d); border-radius:3px; transition:width .12s linear; }
   #hint { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); font-size:13px; color:rgba(255,255,255,.94);
-    background:rgba(13,28,48,.6); border-bottom:3px solid #3fa7a0; padding:6px 14px; border-radius:20px; white-space:nowrap; }
+    background:rgba(13,28,48,.62); border-bottom:3px solid #3fa7a0; padding:7px 16px; border-radius:20px; white-space:nowrap; }
+  .kbd { display:inline-block; font-family:inherit; font-weight:800; font-size:11.5px; color:#10243e;
+    background:linear-gradient(180deg,#fdf6e0,#e8d9ae); border:1px solid rgba(16,36,62,.5); border-bottom-width:3px;
+    border-radius:6px; padding:1px 7px; margin:0 2px; vertical-align:1px; }
   .menu { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     background:linear-gradient(180deg, #2e7cd6 0%, #f08a6b 58%, #e8b54a 100%); color:#fff; text-align:center; z-index:5; }
   .menu h1 { font-size:66px; margin:0; letter-spacing:3px; font-style:italic; color:#fff;
@@ -55,10 +67,10 @@
   <div id="vignette"></div>
   <div id="jobBanner"><div id="jobBarWrap"><div id="jobBar"></div></div></div>
   <div id="stats"><div id="stars"></div><div id="cash">$0</div></div>
-  <div id="minimapWrap"><canvas id="minimap" width="168" height="168"></canvas></div>
+  <div id="minimapWrap"><div id="compass">N</div><canvas id="minimap" width="168" height="168"></canvas></div>
   <div id="toast"></div>
-  <div id="speed"><span id="speedNum"></span><small>KM/H</small></div>
-  <div id="hint">WASD move / drive &nbsp;·&nbsp; E enter/exit car &nbsp;·&nbsp; F fire &nbsp;·&nbsp; Shift sprint/boost &nbsp;·&nbsp; Esc pause</div>
+  <div id="speed"><span id="speedNum"></span><small>KM/H</small><div id="speedBarWrap"><div id="speedBar"></div></div></div>
+  <div id="hint"><span class="kbd">WASD</span> move / drive &nbsp;·&nbsp; <span class="kbd">E</span> enter / exit car &nbsp;·&nbsp; <span class="kbd">F</span> fire &nbsp;·&nbsp; <span class="kbd">Shift</span> sprint / boost &nbsp;·&nbsp; <span class="kbd">Esc</span> pause</div>
 </div>
 
 <div id="startMenu" class="menu">

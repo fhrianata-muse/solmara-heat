@@ -1,4 +1,19 @@
-# LOOK — SOLMARA HEAT (rebuild v2)
+# LOOK — SOLMARA HEAT (rebuild v2, re-authored v3)
+
+## Rebuild v3 notes (this session)
+- Hero paint deepened: Mara's coupe now wears a rich red-coral #C22E23 (was the
+  palette accent #E2483D, which the noon sun + sky env washed out to pink) with a
+  dedicated paint finish — envMapIntensity 0.5, roughness 0.40, metalness 0.12 —
+  so the cover frame reads RED. Her jacket keeps the brighter #E2483D accent.
+- Palms rebuilt as folded blades: every frond is two planes crossed along its
+  rib (a V cross-section with real width from behind), two tiers per crown, and
+  per-frond droop variance — the canopy is a silhouette now, not a asterisk.
+- Facades ship in three window rhythms (classic 4×3 grid, narrow 3×4 slots,
+  wide 5×2 ribbons) assigned per building, and rooflines vary: parapet rims,
+  AC domes and water towers join the step-back crowns.
+- Cruiser lightbars now throw a coloured reflection pool onto the asphalt,
+  and the mission beacon sits in a pulsing ground glow; HUD hint bar wears
+  key-cap chips and the speed readout gains a bar.
 
 ## Rebuild v2 phase notes (builder)
 - 2b: all seven textures shipped as seeded canvas textures in materials.js. Asphalt is painted one tone lighter (#565d66 base) because sRGB colour maps decode darker than the same hex as a flat material colour — the rendered road lands on the #3C4147 target.
